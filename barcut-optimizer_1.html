@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bar Cut Optimizer — ตัดเหล็กเส้น</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --surface2: #1c2128;
+    --border:   #30363d;
+    --border2:  #21262d;
+    --text:     #e6edf3;
+    --muted:    #7d8590;
+    --accent:   #f0a30a;
+    --accent2:  #d4870a;
+    --blue:     #388bfd;
+    --green:    #3fb950;
+    --red:      #f85149;
+    --mono:     'IBM Plex Mono', monospace;
+  }
+  html { font-size: 14px; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sarabun', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 800; color: #000;
+    font-family: var(--mono);
+    flex-shrink: 0;
+  }
+  .header-title { font-size: 16px; font-weight: 800; color: var(--text); line-height: 1; }
+  .header-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); padding: 0 24px; gap: 0; }
+  .tab-btn {
+    padding: 10px 20px; background: none; border: none; border-bottom: 2px solid transparent;
+    color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: 'Sarabun', sans-serif; transition: color .15s, border-color .15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Layout ── */
+  .container { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Group card ── */
+  .group-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  .group-header {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;
+  }
+  .dia-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .field-group { display: flex; align-items: center; gap: 8px; }
+  label.lbl { font-size: 11px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+  input[type=text], input[type=number] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: var(--mono);
+    outline: none;
+    transition: border-color .15s;
+  }
+  input[type=text]:focus, input[type=number]:focus { border-color: var(--accent); }
+  input.w80  { width: 80px; }
+  input.w110 { width: 110px; }
+  input.w100pct { width: 100%; }
+  .btn-remove-group {
+    margin-left: auto;
+    background: #3d1a1a; border: 1px solid #6b2020;
+    border-radius: 6px; padding: 4px 12px;
+    color: var(--red); font-size: 12px; cursor: pointer;
+    font-family: 'Sarabun', sans-serif;
+  }
+  .btn-remove-group:hover { background: #5a2020; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 7px 10px; text-align: left; font-size: 11px; color: var(--muted);
+       font-weight: 700; border-bottom: 1px solid var(--border2); }
+  td { padding: 5px 6px; }
+  .row-num { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  .btn-del-row {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px;
+  }
+  .btn-del-row:hover { color: var(--red); }
+
+  /* ── Buttons ── */
+  .btn-add-row {
+    margin-top: 10px; width: 100%;
+    background: none; border: 1px dashed var(--border);
+    border-radius: 6px; padding: 7px;
+    color: var(--muted); font-size: 12px; cursor: pointer;
+    font-family: 'Sarabun', sans-serif; transition: border-color .15s, color .15s;
+  }
+  .btn-add-row:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-add-group {
+    width: 100%; background: none; border: 1px dashed #1f4b6e;
+    border-radius: 8px; padding: 11px;
+    color: var(--blue); font-size: 13px; cursor: pointer;
+    font-family: 'Sarabun', sans-serif; margin-bottom: 16px;
+    transition: background .15s;
+  }
+  .btn-add-group:hover { background: #1a3550; }
+  .btn-run {
+    width: 100%; padding: 14px;
+    background: var(--accent);
+    border: none; border-radius: 10px;
+    color: #000; font-size: 16px; font-weight: 800; cursor: pointer;
+    font-family: 'Sarabun', sans-serif; letter-spacing: 0.3px;
+    transition: background .15s, transform .1s;
+  }
+  .btn-run:hover { background: var(--accent2); }
+  .btn-run:active { transform: scale(.98); }
+
+  /* ── Error ── */
+  .error-box {
+    background: #3d1a1a; border: 1px solid var(--red);
+    border-radius: 8px; padding: 10px 14px;
+    color: #fca5a5; font-size: 13px; margin-bottom: 14px;
+  }
+
+  /* ── Results ── */
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px; margin-bottom: 24px;
+  }
+  .summary-card {
+    background: var(--surface); border-radius: 10px; padding: 14px;
+    border-left: 3px solid transparent;
+  }
+  .summary-card .dia-label {
+    font-size: 15px; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+  }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .stat-item .stat-label { font-size: 10px; color: var(--muted); }
+  .stat-item .stat-val { font-size: 13px; font-weight: 700; font-family: var(--mono); }
+  .stat-val.bad { color: var(--red); }
+  .stat-val.good { color: var(--green); }
+
+  .result-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px; margin-bottom: 16px;
+  }
+  .result-card-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .waste-badge {
+    margin-left: auto; border-radius: 20px; padding: 2px 12px;
+    font-size: 11px; font-weight: 700; font-family: var(--mono);
+  }
+  .waste-badge.good { background: #1a3d2b; border: 1px solid #2d6a3f; color: var(--green); }
+  .waste-badge.bad  { background: #3d1a1a; border: 1px solid #6b2020; color: var(--red); }
+  .waste-badge.ok   { background: #3d2d10; border: 1px solid #7a5a20; color: var(--accent); }
+
+  .legend { display: flex; gap: 14px; font-size: 11px; color: var(--muted); margin-bottom: 10px; align-items: center; }
+  .legend-dot { width: 14px; height: 8px; border-radius: 2px; }
+
+  .bar-row { margin-bottom: 12px; }
+  .bar-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .bar-num { font-size: 11px; color: var(--muted); font-family: var(--mono); min-width: 56px; }
+  .bar-track {
+    flex: 1; height: 22px; border-radius: 4px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    display: flex; overflow: hidden;
+  }
+  .bar-segment {
+    height: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: rgba(255,255,255,.85); font-weight: 700;
+    font-family: var(--mono); overflow: hidden;
+    border-right: 1px solid rgba(255,255,255,.15);
+    transition: opacity .15s;
+  }
+  .bar-segment:hover { opacity: .85; }
+  .bar-waste {
+    background: var(--border2); display: flex; align-items: center;
+    justify-content: center; font-size: 9px; color: var(--muted);
+    font-family: var(--mono);
+  }
+  .bar-waste-num { font-size: 11px; color: var(--muted); font-family: var(--mono); min-width: 72px; text-align: right; white-space: nowrap; }
+  .bar-formula { padding-left: 64px; font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+
+  .action-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn-back {
+    flex: 1; padding: 12px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 10px;
+    color: var(--muted); font-size: 14px; cursor: pointer;
+    font-family: 'Sarabun', sans-serif; font-weight: 600;
+    transition: border-color .15s;
+  }
+  .btn-back:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-export {
+    flex: 1; padding: 12px;
+    background: #1a3d2b; border: 1px solid #2d6a3f;
+    border-radius: 10px; color: var(--green);
+    font-size: 14px; cursor: pointer;
+    font-family: 'Sarabun', sans-serif; font-weight: 700;
+    transition: background .15s;
+  }
+  .btn-export:hover { background: #24542f; }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+  @media (max-width: 600px) {
+    header { padding: 12px 16px; }
+    .tabs { padding: 0 16px; }
+    .container { padding: 16px 12px; }
+    .group-header { gap: 8px; }
+    .bar-formula { padding-left: 0; }
+  }
+  /* hide number arrows */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type=number] { -moz-appearance: textfield; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">⌀</div>
+  <div>
+    <div class="header-title">Bar Cut Optimizer</div>
+    <div class="header-sub">วางแผนตัดเหล็กเส้น — ลดเศษให้น้อยที่สุด</div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('input')">ข้อมูลนำเข้า</button>
+  <button class="tab-btn" id="tab-result" onclick="showTab('result')">ผลลัพธ์</button>
+</div>
+
+<div class="container">
+
+  <!-- INPUT PAGE -->
+  <div class="page active" id="page-input">
+    <div id="groups-container"></div>
+    <button class="btn-add-group" onclick="addGroup()">+ เพิ่มกลุ่มขนาดเหล็ก (DB20, RB9 ฯลฯ)</button>
+    <div class="error-box" id="error-box" style="display:none"></div>
+    <button class="btn-run" onclick="runOptimizer()">คำนวณแผนตัด ⚡</button>
+  </div>
+
+  <!-- RESULT PAGE -->
+  <div class="page" id="page-result">
+    <div id="result-container">
+      <div class="empty"><div class="empty-icon">📐</div><div>ยังไม่มีผลลัพธ์ — กลับไปกรอกข้อมูลก่อนครับ</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────────────
+const DIA_COLORS = [
+  "#f0a30a","#388bfd","#3fb950","#f85149","#a371f7",
+  "#39d353","#ffa657","#79c0ff","#ff7b72","#d2a8ff"
+];
+let groups = [];
+let gidCounter = 0;
+let pidCounter = 0;
+
+function newGroup(dia="DB16", stock=12000) {
+  return { id: ++gidCounter, dia, stockLength: stock, pieces: [newPiece()] };
+}
+function newPiece() {
+  return { id: ++pidCounter, length: "", qty: "" };
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+groups = [newGroup("DB16", 12000)];
+renderGroups();
+
+// ── Tabs ─────────────────────────────────────────────────────────────────
+function showTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── Group ops ─────────────────────────────────────────────────────────────
+function addGroup() {
+  groups.push(newGroup("DB" + (16 + groups.length * 4), 12000));
+  renderGroups();
+}
+function removeGroup(gid) {
+  if (groups.length === 1) return;
+  groups = groups.filter(g => g.id !== gid);
+  renderGroups();
+}
+function addPiece(gid) {
+  const g = groups.find(g => g.id === gid);
+  g.pieces.push(newPiece());
+  renderGroups();
+}
+function removePiece(gid, pid) {
+  const g = groups.find(g => g.id === gid);
+  if (g.pieces.length === 1) return;
+  g.pieces = g.pieces.filter(p => p.id !== pid);
+  renderGroups();
+}
+
+// ── Sync inputs → data ────────────────────────────────────────────────────
+function syncFromDOM() {
+  groups.forEach(g => {
+    const diaEl = document.getElementById(`dia-${g.id}`);
+    const slEl  = document.getElementById(`sl-${g.id}`);
+    if (diaEl) g.dia = diaEl.value;
+    if (slEl)  g.stockLength = slEl.value;
+    g.pieces.forEach(p => {
+      const lEl = document.getElementById(`pl-${g.id}-${p.id}`);
+      const qEl = document.getElementById(`pq-${g.id}-${p.id}`);
+      if (lEl) p.length = lEl.value;
+      if (qEl) p.qty = qEl.value;
+    });
+  });
+}
+
+// ── Render groups ─────────────────────────────────────────────────────────
+function renderGroups() {
+  const container = document.getElementById('groups-container');
+  container.innerHTML = groups.map((g, gi) => {
+    const color = DIA_COLORS[gi % DIA_COLORS.length];
+    const rows = g.pieces.map((p, pi) => `
+      <tr>
+        <td><span class="row-num">${pi + 1}</span></td>
+        <td><input type="number" id="pl-${g.id}-${p.id}" class="w100pct" value="${p.length}" placeholder="เช่น 4500" oninput="syncField('pl','${g.id}','${p.id}','length',this.value)"></td>
+        <td><input type="number" id="pq-${g.id}-${p.id}" class="w100pct" value="${p.qty}"   placeholder="เช่น 10"   oninput="syncField('pq','${g.id}','${p.id}','qty',this.value)"></td>
+        <td>${g.pieces.length > 1 ? `<button class="btn-del-row" onclick="removePiece(${g.id},${p.id})">×</button>` : ''}</td>
+      </tr>`).join('');
+
+    return `
+    <div class="group-card" id="gc-${g.id}">
+      <div class="group-header">
+        <div class="dia-dot" style="background:${color}"></div>
+        <div class="field-group">
+          <label class="lbl">ขนาดเหล็ก</label>
+          <input type="text" id="dia-${g.id}" class="w80" value="${g.dia}" placeholder="DB16"
+            oninput="syncGroupField(${g.id},'dia',this.value); this.closest('.group-card').querySelector('.dia-label-text').textContent=this.value">
+        </div>
+        <div class="field-group">
+          <label class="lbl">ความยาวท่อน&nbsp;(mm)</label>
+          <input type="number" id="sl-${g.id}" class="w110" value="${g.stockLength}" placeholder="12000"
+            oninput="syncGroupField(${g.id},'stockLength',this.value)">
+        </div>
+        ${groups.length > 1 ? `<button class="btn-remove-group" onclick="removeGroup(${g.id})">ลบกลุ่ม</button>` : ''}
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>ความยาวชิ้น (mm)</th>
+            <th>จำนวน (ชิ้น)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <button class="btn-add-row" onclick="addPiece(${g.id})">+ เพิ่มขนาดชิ้นงาน</button>
+    </div>`;
+  }).join('');
+}
+
+function syncGroupField(gid, key, val) {
+  const g = groups.find(g => g.id === gid);
+  if (g) g[key] = val;
+}
+function syncField(prefix, gid, pid, key, val) {
+  const g = groups.find(g => g.id == gid);
+  if (!g) return;
+  const p = g.pieces.find(p => p.id == pid);
+  if (p) p[key] = val;
+}
+
+// ── Optimizer (FFD) ───────────────────────────────────────────────────────
+function optimizeCuts(pieces, stockLength) {
+  const expanded = [];
+  pieces.forEach(p => {
+    for (let i = 0; i < p.qty; i++) expanded.push({ length: p.length });
+  });
+  expanded.sort((a, b) => b.length - a.length);
+
+  const bars = [];
+  for (const piece of expanded) {
+    let placed = false;
+    for (const bar of bars) {
+      if (bar.used + piece.length <= stockLength) {
+        bar.used += piece.length;
+        bar.pieces.push(piece);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) bars.push({ used: piece.length, pieces: [piece] });
+  }
+  return bars;
+}
+
+// ── Run ───────────────────────────────────────────────────────────────────
+let lastResults = null;
+
+function runOptimizer() {
+  syncFromDOM();
+  const errBox = document.getElementById('error-box');
+  errBox.style.display = 'none';
+
+  const results = [];
+  for (const g of groups) {
+    const stockLength = parseFloat(g.stockLength);
+    if (!stockLength || stockLength <= 0) {
+      showError(`กรุณาระบุความยาวท่อนใน "${g.dia}"`); return;
+    }
+    const pieces = [];
+    for (const p of g.pieces) {
+      const len = parseFloat(p.length);
+      const qty = parseInt(p.qty);
+      if (!len || !qty || len <= 0 || qty <= 0) {
+        showError(`ข้อมูลชิ้นงานไม่ครบในกลุ่ม "${g.dia}" — กรุณาใส่ทุกช่อง`); return;
+      }
+      if (len > stockLength) {
+        showError(`ชิ้นงาน ${len} mm ยาวกว่าท่อน ${stockLength} mm ในกลุ่ม "${g.dia}"`); return;
+      }
+      pieces.push({ length: len, qty });
+    }
+    const bars = optimizeCuts(pieces, stockLength);
+    const totalUsed   = bars.reduce((s, b) => s + b.used, 0);
+    const totalLength = bars.length * stockLength;
+    const wasteTotal  = totalLength - totalUsed;
+    results.push({
+      dia: g.dia,
+      stockLength,
+      bars,
+      totalUsed,
+      totalLength,
+      wasteTotal,
+      wastePct: (wasteTotal / totalLength * 100).toFixed(1),
+      barCount: bars.length
+    });
+  }
+  lastResults = results;
+  renderResults(results);
+
+  // switch tab
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-result').classList.add('active');
+  document.getElementById('tab-result').classList.add('active');
+}
+
+function showError(msg) {
+  const errBox = document.getElementById('error-box');
+  errBox.textContent = '⚠️ ' + msg;
+  errBox.style.display = 'block';
+}
+
+// ── Render results ────────────────────────────────────────────────────────
+function renderResults(results) {
+  const allDias = results.map(r => r.dia);
+  const container = document.getElementById('result-container');
+
+  // Summary cards
+  const summaryHTML = results.map((r, i) => {
+    const color = DIA_COLORS[i % DIA_COLORS.length];
+    const pct = parseFloat(r.wastePct);
+    const cls = pct < 5 ? 'good' : pct < 12 ? '' : 'bad';
+    return `
+    <div class="summary-card" style="border-left-color:${color}">
+      <div class="dia-label">
+        <div class="dia-dot" style="background:${color}"></div>
+        <span>${r.dia}</span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-item"><div class="stat-label">ท่อนทั้งหมด</div><div class="stat-val">${r.barCount} ท่อน</div></div>
+        <div class="stat-item"><div class="stat-label">เศษวัสดุ</div><div class="stat-val ${pct<5?'good':pct>12?'bad':''}">${r.wastePct}%</div></div>
+        <div class="stat-item"><div class="stat-label">ใช้จริง</div><div class="stat-val">${(r.totalUsed/1000).toFixed(2)} m</div></div>
+        <div class="stat-item"><div class="stat-label">เศษรวม</div><div class="stat-val">${(r.wasteTotal/1000).toFixed(2)} m</div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Detail cards
+  const detailHTML = results.map((r, ri) => {
+    const color = DIA_COLORS[ri % DIA_COLORS.length];
+    const pct = parseFloat(r.wastePct);
+    const badgeCls = pct < 5 ? 'good' : pct < 12 ? 'ok' : 'bad';
+
+    const barsHTML = r.bars.map((bar, bi) => {
+      const waste = r.stockLength - bar.used;
+      const segs = bar.pieces.map(p => {
+        const w = (p.length / r.stockLength * 100).toFixed(2);
+        const showLabel = p.length >= r.stockLength * 0.07;
+        return `<div class="bar-segment" style="width:${w}%;background:${color};opacity:0.78" title="${p.length} mm">${showLabel ? p.length : ''}</div>`;
+      }).join('');
+      const wasteW = (waste / r.stockLength * 100).toFixed(2);
+      const wasteEl = waste > 0 ? `<div class="bar-waste" style="width:${wasteW}%">${waste >= r.stockLength * 0.05 ? waste : ''}</div>` : '';
+      const formula = bar.pieces.map(p => p.length).join(' + ') + ` = ${bar.used.toLocaleString()} mm`;
+
+      return `
+      <div class="bar-row">
+        <div class="bar-meta">
+          <span class="bar-num">T-${String(bi+1).padStart(2,'0')}</span>
+          <div class="bar-track">${segs}${wasteEl}</div>
+          <span class="bar-waste-num">เศษ ${waste.toLocaleString()} mm</span>
+        </div>
+        <div class="bar-formula">${formula}</div>
+      </div>`;
+    }).join('');
+
+    return `
+    <div class="result-card">
+      <div class="result-card-header">
+        <div class="dia-dot" style="background:${color}"></div>
+        <span style="font-weight:800;font-size:15px">${r.dia}</span>
+        <span style="color:var(--muted);font-size:12px">ท่อนละ ${r.stockLength.toLocaleString()} mm</span>
+        <span class="waste-badge ${badgeCls}">เศษ ${r.wastePct}%</span>
+      </div>
+      <div class="legend">
+        <span style="display:flex;align-items:center;gap:5px">
+          <span class="legend-dot" style="background:${color};opacity:.78"></span>ชิ้นงาน
+        </span>
+        <span style="display:flex;align-items:center;gap:5px">
+          <span class="legend-dot" style="background:var(--border2)"></span>เศษ
+        </span>
+      </div>
+      ${barsHTML}
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="summary-grid">${summaryHTML}</div>
+    ${detailHTML}
+    <div class="action-row">
+      <button class="btn-back" onclick="goBack()">← แก้ไขข้อมูล</button>
+      <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>`;
+}
+
+function goBack() {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-input').classList.add('active');
+  document.querySelector('.tab-btn').classList.add('active');
+}
+
+// ── Export CSV ────────────────────────────────────────────────────────────
+function exportCSV() {
+  if (!lastResults) return;
+  let csv = '\uFEFF'; // BOM for Thai Excel
+  csv += 'ขนาด,ท่อนที่,ความยาวท่อน (mm),ชิ้นงาน,สูตรการตัด,ใช้แล้ว (mm),เศษ (mm)\n';
+  lastResults.forEach(r => {
+    r.bars.forEach((bar, i) => {
+      const formula = bar.pieces.map(p => p.length).join('+');
+      const waste = r.stockLength - bar.used;
+      csv += `${r.dia},${i+1},${r.stockLength},"${formula}",${bar.pieces.length},${bar.used},${waste}\n`;
+    });
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'barcut_result.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
